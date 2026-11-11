@@ -1,2 +1,27 @@
-# desert-prince
-Desert Prince: acrobatic desert platformer that plays in the browser
+# נסיך המדבר (Desert Prince)
+
+משחק פלטפורמה אקרובטי בדפדפן, בהשראת הז'אנר הקלאסי של נסיך פרסי. דמויות, שם ועיצוב מקוריים. אין צורך בהתקנה, קובץ HTML אחד.
+
+## שליטה
+
+- חצים או WASD: ריצה וקפיצה
+- חץ למעלה ליד קצה: טיפוס. חץ למטה: שחרור מתלייה
+- Z או J: חרב
+- X או K: הגנה
+- R: התחלת המפלס מחדש
+- במובייל: כפתורים על המסך
+
+## מה יש במשחק
+
+- 3 מפלסים, 20 דקות לכל המשחק
+- קוצים, ריצפות רופפות, לוחצן ושער, שיקויי חיים
+- נזק מנפילה, תלייה וטיפוס על קצוות
+- שומרים עם חרב, חסימה והדיפה
+
+## הרצה
+
+פותחים את index.html בדפדפן. אפשר גם להפעיל GitHub Pages מהענף main.
+
+---
+
+A single-file acrobatic platformer for the browser. Original characters and art. Open index.html to play.
