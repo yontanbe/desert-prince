@@ -1,6 +1,8 @@
 # נסיך המדבר (Desert Prince)
 
-משחק פלטפורמה אקרובטי בדפדפן, בהשראת הז'אנר הקלאסי של נסיך פרסי. דמויות, שם ועיצוב מקוריים. אין צורך בהתקנה, קובץ HTML אחד.
+[שחק עכשיו](https://yontanbe.github.io/desert-prince/)
+
+משחק פלטפורמה אקרובטי בדפדפן, בהשראת הז'אנר הקלאסי של נסיך פרסי. דמויות, שם ועיצוב מקוריים. בלי התקנה, קובץ HTML אחד, עובד במחשב ובנייד.
 
 ## שליטה
 
@@ -9,19 +11,15 @@
 - Z או J: חרב
 - X או K: הגנה
 - R: התחלת המפלס מחדש
-- במובייל: כפתורים על המסך
+- בנייד: כפתורים על המסך
 
 ## מה יש במשחק
 
 - 3 מפלסים, 20 דקות לכל המשחק
-- קוצים, ריצפות רופפות, לוחצן ושער, שיקויי חיים
+- קוצים, רצפות רופפות, לוחצן ושער, שיקויי חיים
 - נזק מנפילה, תלייה וטיפוס על קצוות
 - שומרים עם חרב, חסימה והדיפה
 
-## הרצה
-
-פותחים את index.html בדפדפן. אפשר גם להפעיל GitHub Pages מהענף main.
-
 ---
 
-A single-file acrobatic platformer for the browser. Original characters and art. Open index.html to play.
+A single-file acrobatic platformer for the browser. Original characters and art. Play: https://yontanbe.github.io/desert-prince/
