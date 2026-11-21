@@ -45,11 +45,14 @@ function gate(g,x){for(let y=4;y<=10;y++)g[y][x]='G'}
 function torches(g,xs,y){xs.forEach(x=>{if(g[y][x]==='.')g[y][x]='T'})}
 
 /* ---------- levels ---------- */
+function adjOps(ops,d){return ops.map(o=>{const k=o[0];if('psl'.includes(k)){let w=o[1];if(d===0)w=Math.max(1,Math.min(w-1,3));else if(d===2)w=k==='s'?Math.min(w+1,3):Math.min(w+1,4);return[k,w]}
+  if(k==='b'&&d===0)return[k,o[1],Math.min(o[2],2)];return o})}
 function mkLevel(spec,idx){
+ function gen(d){
   const ops=[];{
-    const need=(a,b)=>{const H='psl';if(H.includes(a)&&H.includes(b))return 3;if((a==='b'&&H.includes(b))||(b==='b'&&H.includes(a)))return 4;if(H.includes(a)&&b==='g')return 6;if(a==='g'&&H.includes(b))return 6;if(a==='g'&&b==='b'||a==='b'&&b==='g')return 4;if(a==='k'&&H.includes(b)||H.includes(a)&&b==='k')return 4;return 0};
+    const need=(a,b)=>{const H='psl';if(H.includes(a)&&H.includes(b))return d===0?4:3;if((a==='b'&&H.includes(b))||(b==='b'&&H.includes(a)))return 4;if(H.includes(a)&&b==='g')return 6;if(a==='g'&&H.includes(b))return 6;if(a==='g'&&b==='b'||a==='b'&&b==='g')return 4;if(a==='k'&&H.includes(b)||H.includes(a)&&b==='k')return 4;return 0};
     let last=null,pad=0;
-    for(const o of spec.ops){
+    for(const o of adjOps(spec.ops,d)){
       if(o[0]==='f'){pad+=o[1];continue}
       if(o[0]==='H'){ops.push(o);continue}
       if(o[0]==='u'){ops.push(o);continue}
@@ -75,7 +78,10 @@ function mkLevel(spec,idx){
   }
   g[10][c+4]='E';
   for(let x=7;x<w-2;x+=7)if(g[6][x]==='.')g[6][x]='T';
-  return{name:'מפלס '+(idx+1)+': '+spec.n,short:spec.n,start:[2,10],guards,w,time:spec.time||(210+idx*15),th:spec.th,mus:spec.mus,build(){return g.map(r=>r.slice())}}
+  return{g,guards:guards.map(q=>[q[0],q[1],Math.max(1,q[2]+[-1,0,2][d])]),w};
+ }
+ const o0=gen(1);
+ return{name:'מפלס '+(idx+1)+': '+spec.n,short:spec.n,start:[2,10],guards:o0.guards,w:o0.w,time:spec.time||(210+idx*15),th:spec.th,mus:spec.mus,build(){const r=gen(DIFF);this.guards=r.guards;this.w=r.w;return r.g.map(q=>q.slice())}}
 }
 const SPEC=[
  {n:'חצר הארמון',th:{tint:'#ffffff',dark:.5,zoom:1.3,by:.35,bgx:0},mus:{root:50,bpm:84,seed:1},
@@ -106,7 +112,7 @@ const SPEC=[
 const LEVELS=SPEC.map(mkLevel);
 
 /* ---------- state ---------- */
-let state='title',lvl=0,G,W,H,gateOpen,loose,debris,guards,P,timeLeft=1200,msg='',cam={x:0,y:0},tAnim=0,lights=[],parts=[],shake=0,fade=0,CUR=null,sel=0,story=null,DONE={};
+let state='title',lvl=0,G,W,H,gateOpen,loose,debris,guards,P,timeLeft=1200,msg='',cam={x:0,y:0},tAnim=0,lights=[],parts=[],shake=0,fade=0,CUR=null,sel=0,story=null,DONE={},DIFF=0;
 const keys={},pressed={};
 
 /* ---------- art (AI generated sprites) ---------- */
@@ -184,8 +190,8 @@ function drawTileArt(c,x,y){
 function solid(tx,ty){if(tx<0||tx>=W)return true;if(ty<0)return true;if(ty>=H)return false;const c=G[ty][tx];return c==='#'||c==='L'||(c==='G'&&!gateOpen)}
 function ent(x,y,hp){return{x:x*TS+7,y:y*TS-8,w:18,h:40,vx:0,vy:0,dir:1,ground:false,hp:hp,maxhp:hp,atk:0,atkHit:false,blk:0,stun:0,hurt:0,cd:0.8,dead:false,peak:y*TS,hang:false,climb:0,grabCd:0}}
 function loadLevel(n){
-  const L=LEVELS[n];CUR=L;timeLeft=L.time;G=L.build();H=G.length;W=G[0].length;gateOpen=false;gateA=0;loose={};debris=[];parts=[];shake=0;fade=1;
-  P=ent(L.start[0],L.start[1],3);P.hp=3;P.maxhp=3;
+  const L=LEVELS[n];CUR=L;G=L.build();timeLeft=L.time*[1.7,1,.8][DIFF];H=G.length;W=G[0].length;gateOpen=false;gateA=0;loose={};debris=[];parts=[];shake=0;fade=1;
+  P=ent(L.start[0],L.start[1],3);P.hp=DF[DIFF].hp;P.maxhp=DF[DIFF].hp;
   guards=L.guards.map(a=>{const g=ent(a[0],a[1],a[2]);g.dir=-1;return g});
   lights=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++){const c=G[y][x];if(c==='T')lights.push({x:x*TS+16,y:y*TS-4,r:150,a:.95,t:'torch'});if(c==='E')lights.push({x:x*TS+16,y:y*TS-8,r:130,a:.9,t:'door'})}
   cam.x=Math.max(0,P.x-VW/2);cam.y=Math.max(0,Math.min(H*TS-VH,P.y-VH*.6));
@@ -250,11 +256,11 @@ function updPlayer(dt){
     pressed.up=false;return}
   p.blk=(keys.blk&&p.ground&&p.atk<=0)?1:0;
   let ax=0;if(keys.left)ax-=1;if(keys.right)ax+=1;
-  const sp=(p.blk||p.atk>0)?35:(p.ground?160:205);
+  const sp=(p.blk||p.atk>0)?35:(p.ground?160:DF[DIFF].sp);
   if(p.hurt<.4){p.vx+=((ax*sp)-p.vx)*Math.min(1,(p.ground?14:8)*dt);if(ax&&!p.blk&&p.atk<=0)p.dir=ax}
-  if(pressed.up)p.jbuf=.14;pressed.up=false;
-  p.jbuf=Math.max(0,(p.jbuf||0)-dt);p.coy=p.ground?.1:Math.max(0,(p.coy||0)-dt);
-  if(p.jbuf>0&&p.coy>0&&!p.blk&&p.hurt<.4){p.vy=-630;p.ground=false;p.coy=0;p.jbuf=0;p.jumped=true;dust(p.x+9,p.y+p.h,4);snd(380,.12,'triangle')}
+  if(pressed.up)p.jbuf=DF[DIFF].buf;pressed.up=false;
+  p.jbuf=Math.max(0,(p.jbuf||0)-dt);p.coy=p.ground?DF[DIFF].coy:Math.max(0,(p.coy||0)-dt);
+  if(p.jbuf>0&&p.coy>0&&!p.blk&&p.hurt<.4){p.vy=DF[DIFF].vy;p.ground=false;p.coy=0;p.jbuf=0;p.jumped=true;dust(p.x+9,p.y+p.h,4);snd(380,.12,'triangle')}
   if(p.jumped&&!keys.up&&p.vy<-260){p.vy*=.5;p.jumped=false}
   if(p.vy>=0)p.jumped=false;
   if(pressed.atk&&p.atk<=0&&p.ground&&!p.blk){p.atk=.35;p.atkHit=false;snd(300,.08,'sawtooth')}
@@ -619,6 +625,12 @@ const STORY=[
  [{t:'אחרי השקיעה',w:'p',l:['החותם נשבר, והשמש נשארה בשמיים.','הסולטאן התעורר, ושרקאן נעלם בין סדקי המגדל.','כאמל חזר לחצר, שם חיכה לו ג\'מאל עם כוס תה.','הלילה הסתיים, ויום חדש התחיל בארמון.']}]
 ];
 
+const DF=[{sp:215,vy:-650,coy:.18,buf:.22,hp:5},{sp:205,vy:-630,coy:.1,buf:.14,hp:3},{sp:200,vy:-615,coy:.06,buf:.1,hp:3}];
+const DLAB=['קל','בינוני','קשה'],DCOL=['#7dff9a','#ffd36b','#ff7a6b'];
+function setDiff(k){DIFF=k;try{localStorage.setItem('dp_diff',String(k))}catch(e){}}
+try{const v=parseInt(localStorage.getItem('dp_diff'));if(v>=0&&v<3)DIFF=v}catch(e){}
+function diffPos(i){return[VW/2-134+(2-i)*92,44]}
+function drawDiff(){for(let i=0;i<3;i++){const[x,y]=diffPos(i),on=i===DIFF;ctx.fillStyle=on?'rgba(60,38,12,.95)':'rgba(10,5,3,.6)';ctx.beginPath();ctx.roundRect(x,y,84,24,7);ctx.fill();ctx.strokeStyle=on?DCOL[i]:'#d9a84a77';ctx.lineWidth=on?2.4:1;ctx.stroke();txt(DLAB[i],x+42,y+17,14,on?DCOL[i]:'#cdb68a','800','center',2)}}
 /* ---------- music (generated live, no files) ---------- */
 const MUS={on:true,run:false,bus:null,fx:null,next:0,step:0,bar:0,cfgKey:'',cfg:null,motifs:[],fight:0,drone:null};
 try{if(localStorage.getItem('dp_mus')==='0')MUS.on=false}catch(e){}
@@ -688,24 +700,24 @@ function musicTick(){
 
 /* ---------- menu, story screens, icons ---------- */
 function ptr(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*VW,(e.clientY-r.top)/r.height*VH]}
-const CARD={w:136,h:70,gx:14,gy:10,cols:4};
-function cardPos(i){const row=Math.floor(i/CARD.cols),col=i%CARD.cols,x0=(VW-(CARD.cols*CARD.w+(CARD.cols-1)*CARD.gx))/2;return[x0+(CARD.cols-1-col)*(CARD.w+CARD.gx),76+row*(CARD.h+CARD.gy)]}
+const CARD={w:136,h:64,gx:14,gy:8,cols:4};
+function cardPos(i){const row=Math.floor(i/CARD.cols),col=i%CARD.cols,x0=(VW-(CARD.cols*CARD.w+(CARD.cols-1)*CARD.gx))/2;return[x0+(CARD.cols-1-col)*(CARD.w+CARD.gx),90+row*(CARD.h+CARD.gy)]}
 function menuHit(x,y){for(let i=0;i<LEVELS.length;i++){const[cx,cy]=cardPos(i);if(x>=cx&&x<=cx+CARD.w&&y>=cy&&y<=cy+CARD.h)return i}return -1}
 function drawMenu(){
   cam.x=(tAnim*14)%768;cam.y=0;CUR=LEVELS[sel];drawBG();
   ctx.fillStyle='rgba(8,4,3,.55)';ctx.fillRect(0,0,VW,VH);
-  txt('בחירת מפלס',VW/2,50,32,gold(50,32),'900','center',5);
+  txt('בחירת מפלס',VW/2,32,26,gold(32,26),'900','center',5);drawDiff();
   for(let i=0;i<LEVELS.length;i++){
     const[x,y]=cardPos(i),on=i===sel;
     ctx.save();
     if(on){ctx.shadowColor='#ffc857';ctx.shadowBlur=14}
     panel(x,y,CARD.w,CARD.h);ctx.restore();
     if(on){ctx.strokeStyle='#ffd36b';ctx.lineWidth=2.4;ctx.beginPath();ctx.roundRect(x,y,CARD.w,CARD.h,7);ctx.stroke()}
-    txt(String(i+1),x+CARD.w-14,y+34,28,on?'#ffd36b':'#e8c27a','900','right',3);
-    txt(LEVELS[i].short,x+CARD.w/2,y+58,12.5,'#f3e3c0','600','center',2.5);
+    txt(String(i+1),x+CARD.w-14,y+32,26,on?'#ffd36b':'#e8c27a','900','right',3);
+    txt(LEVELS[i].short,x+CARD.w/2,y+54,12.5,'#f3e3c0','600','center',2.5);
     if(DONE[i])txt('✓',x+16,y+28,22,'#7dff9a','900','center',3);
   }
-  txt('חצים לבחירה     Enter להתחלה     M מוזיקה     Esc חזרה',VW/2,VH-12,13,'#d8c7a0','500','center',3);
+  txt('חצים לבחירה     Enter להתחלה     מספרים לרמה     M מוזיקה     Esc חזרה',VW/2,VH-10,12,'#d8c7a0','500','center',3);
   drawMusicBtn(VW-34,10);
 }
 function drawMusicBtn(x,y){ctx.fillStyle='rgba(10,5,3,.6)';ctx.beginPath();ctx.roundRect(x,y,24,22,6);ctx.fill();ctx.strokeStyle='#d9a84a99';ctx.lineWidth=1;ctx.stroke();txt(MUS.on?'♪':'×',x+12,y+17,15,'#ffd36b','700','center',0)}
@@ -754,6 +766,7 @@ function menuKey(e){
     else if(k==='ArrowRight'||k==='d'||k==='D')sel=(sel+n-1)%n;
     else if(k==='ArrowUp'||k==='w'||k==='W')sel=(sel+n-4)%n;
     else if(k==='ArrowDown'||k==='s'||k==='S')sel=(sel+4)%n;
+    else if(k==='1'||k==='2'||k==='3')setDiff(+k-1);
     else if(k==='Enter'||k===' ')openStory(sel);
     else return false;
     e.preventDefault();return true}
@@ -772,7 +785,7 @@ addEventListener('keyup',e=>{const k=KM[e.key.length>1?e.key:e.key.toLowerCase()
 cv.addEventListener('pointerdown',e=>{
   musicStart();const[x,y]=ptr(e);
   if(state==='play'){if(y>34&&y<60){if(x>8&&x<36)musicToggle();else if(x>38&&x<66){state='menu';fade=1}}return}
-  if(state==='menu'){if(x>VW-36&&y<34){musicToggle();return}const i=menuHit(x,y);if(i>=0){sel=i;openStory(i)}return}
+  if(state==='menu'){if(x>VW-36&&y<34){musicToggle();return}for(let k=0;k<3;k++){const[bx,by]=diffPos(k);if(x>=bx&&x<=bx+84&&y>=by&&y<=by+24){setDiff(k);return}}const i=menuHit(x,y);if(i>=0){sel=i;openStory(i)}return}
   startOrRestart()});
 document.querySelectorAll('.b').forEach(b=>{
   const k=b.dataset.k;
