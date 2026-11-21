@@ -44,46 +44,69 @@ function pit(g,x1,x2,spikesRow){R(g,11,x1,x2,'.');R(g,12,x1,x2,'.');if(spikesRow
 function gate(g,x){for(let y=4;y<=10;y++)g[y][x]='G'}
 function torches(g,xs,y){xs.forEach(x=>{if(g[y][x]==='.')g[y][x]='T'})}
 
-const LEVELS=[
- {name:'מפלס 1: חצר הארמון',start:[2,10],guards:[[70,10,2]],build(){
-  const w=80,g=base(w,14);
-  pit(g,14,16,12);
-  R(g,8,22,26,'#');g[7][24]='H';
-  R(g,5,31,35,'#');g[4][33]='H';
-  R(g,10,40,42,'^');
-  R(g,11,48,50,'L');
-  g[10][58]='P';gate(g,66);
-  g[10][77]='E';
-  torches(g,[6,20,38,55,62,75],6);
-  return g}},
- {name:'מפלס 2: מרתפי הארמון',start:[2,10],guards:[[55,10,2],[90,10,3]],build(){
-  const w=100,g=base(w,14);
-  pit(g,12,14,12);
-  R(g,8,20,24,'#');
-  R(g,5,28,31,'#');g[4][29]='H';
-  R(g,8,36,40,'#');g[7][38]='H';
-  R(g,10,45,47,'^');
-  pit(g,62,66,13);R(g,11,62,66,'L');
-  R(g,9,68,69,'#');R(g,7,70,76,'#');g[6][75]='P';
-  gate(g,82);
-  g[10][96]='E';
-  torches(g,[5,18,33,50,60,80,88],6);
-  return g}},
- {name:'מפלס 3: מגדל הוזיר',start:[2,10],guards:[[60,10,3],[80,10,3],[100,10,4]],build(){
-  const w=120,g=base(w,14);
-  R(g,10,12,14,'^');
-  pit(g,20,22,12);
-  R(g,9,30,32,'#');R(g,6,34,38,'#');R(g,3,42,46,'#');g[2][44]='H';
-  R(g,6,50,54,'L');R(g,10,50,54,'^');
-  g[10][70]='P';gate(g,74);
-  pit(g,86,92,13);R(g,11,86,92,'L');
-  g[10][115]='E';
-  torches(g,[6,18,28,48,58,68,78,95,105],6);
-  return g}}
+/* ---------- levels ---------- */
+function mkLevel(spec,idx){
+  const ops=[];{
+    const need=(a,b)=>{const H='psl';if(H.includes(a)&&H.includes(b))return 3;if((a==='b'&&H.includes(b))||(b==='b'&&H.includes(a)))return 4;if(H.includes(a)&&b==='g')return 6;if(a==='g'&&H.includes(b))return 6;if(a==='g'&&b==='b'||a==='b'&&b==='g')return 4;if(a==='k'&&H.includes(b)||H.includes(a)&&b==='k')return 4;return 0};
+    let last=null,pad=0;
+    for(const o of spec.ops){
+      if(o[0]==='f'){pad+=o[1];continue}
+      if(o[0]==='H'){ops.push(o);continue}
+      if(o[0]==='u'){ops.push(o);continue}
+      if(last){const n=need(last,o[0]);if(pad<n)pad=n}
+      if(pad>0)ops.push(['f',pad]);pad=0;ops.push(o);last=o[0];
+    }
+    if(pad>0)ops.push(['f',pad]);
+  }
+  let w=3;
+  for(const o of ops){const k=o[0];if(k==='f'||k==='p'||k==='s'||k==='l'||k==='b')w+=o[1];else if(k==='k')w+=o[1]+1}
+  w+=12;
+  const g=base(w,14),guards=[];let c=3;
+  for(const o of ops){const k=o[0];
+    if(k==='f')c+=o[1];
+    else if(k==='p'){pit(g,c,c+o[1]-1,13);c+=o[1]}
+    else if(k==='s'){R(g,10,c,c+o[1]-1,'^');c+=o[1]}
+    else if(k==='l'){pit(g,c,c+o[1]-1,13);R(g,11,c,c+o[1]-1,'L');c+=o[1]}
+    else if(k==='b'){for(let r=11-o[2];r<=10;r++)R(g,r,c,c+o[1]-1,'#');c+=o[1]}
+    else if(k==='H'){g[10][c]='H'}
+    else if(k==='g')guards.push([c,10,o[1]]);
+    else if(k==='k'){g[10][c]='P';gate(g,c+o[1]);c+=o[1]+1}
+    else if(k==='u'){R(g,o[2],c+o[3],c+o[3]+o[1]-1,'#');if(o[4])g[o[2]-1][c+o[3]+(o[1]>>1)]='H'}
+  }
+  g[10][c+4]='E';
+  for(let x=7;x<w-2;x+=7)if(g[6][x]==='.')g[6][x]='T';
+  return{name:'מפלס '+(idx+1)+': '+spec.n,short:spec.n,start:[2,10],guards,w,time:spec.time||(210+idx*15),th:spec.th,mus:spec.mus,build(){return g.map(r=>r.slice())}}
+}
+const SPEC=[
+ {n:'חצר הארמון',th:{tint:'#ffffff',dark:.5,zoom:1.3,by:.35,bgx:0},mus:{root:50,bpm:84,seed:1},
+  ops:[['f',7],['p',2],['f',6],['H'],['s',2],['f',5],['b',2,1],['f',5],['u',4,8,1,1],['f',4],['g',2],['f',9]]},
+ {n:'מרתפי האבן',th:{tint:'#d2bfa8',dark:.62,zoom:1.5,by:.8,bgx:300},mus:{root:47,bpm:90,seed:2},
+  ops:[['f',6],['s',2],['f',4],['p',3],['f',5],['g',2],['f',5],['l',5],['f',4],['H'],['b',2,2],['f',4],['k',7],['f',7],['g',3],['f',6]]},
+ {n:'גגות הארמון',th:{tint:'#ffe2c0',dark:.3,zoom:1.7,by:.15,bgx:120},mus:{root:52,bpm:104,seed:3},
+  ops:[['f',6],['p',4],['f',3],['p',3],['f',4],['b',3,2],['f',3],['p',4],['f',4],['H'],['g',3],['f',6],['s',3],['f',4],['p',3],['f',8]]},
+ {n:'הגן המלכותי',th:{tint:'#c8e8c0',dark:.4,zoom:1.4,by:.4,bgx:560},mus:{root:50,bpm:96,seed:4},
+  ops:[['f',6],['s',3],['f',3],['g',2],['f',6],['l',6],['f',4],['s',2],['f',2],['s',2],['f',4],['H'],['u',3,8,1,1],['f',5],['p',3],['f',4],['g',3],['f',3],['b',2,2],['f',6]]},
+ {n:'בור המים',th:{tint:'#9fc0ff',dark:.6,zoom:1.6,by:.7,bgx:700},mus:{root:45,bpm:88,seed:5},
+  ops:[['f',5],['l',6],['f',3],['p',3],['f',3],['k',9],['f',4],['s',2],['f',3],['g',3],['f',5],['l',7],['f',4],['b',2,2],['f',3],['p',4],['f',4],['g',3],['f',6]]},
+ {n:'הספרייה הישנה',th:{tint:'#d6c0ff',dark:.55,zoom:1.45,by:.5,bgx:200},mus:{root:49,bpm:92,seed:6},
+  ops:[['f',6],['b',2,2],['f',3],['b',3,2],['f',3],['p',3],['f',3],['b',2,1],['f',2],['s',2],['f',2],['b',2,2],['f',4],['g',3],['f',4],['H'],['k',8],['f',5],['g',3],['f',6]]},
+ {n:'מנהרות העכברושים',th:{tint:'#b8a8a0',dark:.7,zoom:1.8,by:.9,bgx:900},mus:{root:46,bpm:100,seed:7},
+  ops:[['f',5],['s',2],['f',2],['s',3],['f',3],['p',4],['f',3],['s',2],['f',3],['g',3],['f',4],['l',7],['f',3],['p',3],['f',2],['p',3],['f',4],['H'],['g',3],['f',3],['s',3],['f',6]]},
+ {n:'חדר האוצרות',th:{tint:'#ffe08a',dark:.45,zoom:1.35,by:.3,bgx:380},mus:{root:51,bpm:98,seed:8},
+  ops:[['f',6],['g',3],['f',5],['k',6],['f',4],['p',3],['f',4],['g',3],['f',4],['k',7],['f',3],['s',2],['f',3],['H'],['b',2,2],['f',4],['g',4],['f',8]]},
+ {n:'מגדל השעון',th:{tint:'#e0d0ff',dark:.5,zoom:1.6,by:.1,bgx:50},mus:{root:53,bpm:108,seed:9},
+  ops:[['f',6],['b',2,3],['f',3],['p',4],['f',3],['b',3,3],['f',3],['s',2],['f',3],['b',2,2],['f',3],['p',3],['f',3],['g',3],['f',3],['b',2,3],['f',4],['H'],['l',6],['f',4],['g',4],['f',6]]},
+ {n:'חדר הכס',th:{tint:'#ffb0a0',dark:.5,zoom:1.4,by:.5,bgx:500},mus:{root:48,bpm:106,seed:10},
+  ops:[['f',6],['g',3],['f',7],['s',2],['f',4],['g',4],['f',6],['k',8],['f',3],['H'],['g',4],['f',5],['p',3],['f',4],['g',4],['f',4],['b',2,2],['f',3],['g',5],['f',8]]},
+ {n:'גשר השמש',th:{tint:'#ffcf8a',dark:.25,zoom:1.7,by:.2,bgx:800},mus:{root:54,bpm:112,seed:11},
+  ops:[['f',5],['l',7],['f',3],['l',7],['f',3],['p',4],['f',3],['s',3],['f',3],['p',4],['f',3],['l',7],['f',3],['H'],['g',4],['f',4],['p',4],['f',3],['p',4],['f',6]]},
+ {n:'ראש המגדל',th:{tint:'#ff9a80',dark:.4,zoom:1.5,by:.35,bgx:100},mus:{root:50,bpm:118,seed:12},
+  ops:[['f',6],['g',4],['f',4],['p',4],['f',3],['b',3,3],['f',3],['s',3],['f',3],['g',4],['f',4],['H'],['k',9],['f',3],['p',4],['f',2],['s',2],['f',2],['p',3],['f',4],['H'],['g',6],['f',4],['g',6],['f',8]]}
 ];
+const LEVELS=SPEC.map(mkLevel);
 
 /* ---------- state ---------- */
-let state='title',lvl=0,G,W,H,gateOpen,loose,debris,guards,P,timeLeft=1200,msg='',cam={x:0,y:0},tAnim=0,lights=[],parts=[],shake=0,fade=0;
+let state='title',lvl=0,G,W,H,gateOpen,loose,debris,guards,P,timeLeft=1200,msg='',cam={x:0,y:0},tAnim=0,lights=[],parts=[],shake=0,fade=0,CUR=null,sel=0,story=null,DONE={};
 const keys={},pressed={};
 
 /* ---------- art (AI generated sprites) ---------- */
@@ -161,7 +184,7 @@ function drawTileArt(c,x,y){
 function solid(tx,ty){if(tx<0||tx>=W)return true;if(ty<0)return true;if(ty>=H)return false;const c=G[ty][tx];return c==='#'||c==='L'||(c==='G'&&!gateOpen)}
 function ent(x,y,hp){return{x:x*TS+7,y:y*TS-8,w:18,h:40,vx:0,vy:0,dir:1,ground:false,hp:hp,maxhp:hp,atk:0,atkHit:false,blk:0,stun:0,hurt:0,cd:0.8,dead:false,peak:y*TS,hang:false,climb:0,grabCd:0}}
 function loadLevel(n){
-  const L=LEVELS[n];G=L.build();H=G.length;W=G[0].length;gateOpen=false;gateA=0;loose={};debris=[];parts=[];shake=0;fade=1;
+  const L=LEVELS[n];CUR=L;timeLeft=L.time;G=L.build();H=G.length;W=G[0].length;gateOpen=false;gateA=0;loose={};debris=[];parts=[];shake=0;fade=1;
   P=ent(L.start[0],L.start[1],3);P.hp=3;P.maxhp=3;
   guards=L.guards.map(a=>{const g=ent(a[0],a[1],a[2]);g.dir=-1;return g});
   lights=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++){const c=G[y][x];if(c==='T')lights.push({x:x*TS+16,y:y*TS-4,r:150,a:.95,t:'torch'});if(c==='E')lights.push({x:x*TS+16,y:y*TS-8,r:130,a:.9,t:'door'})}
@@ -169,10 +192,26 @@ function loadLevel(n){
   state='play';msg='';
 }
 function startOrRestart(){
-  if(state==='title'||state==='end'||state==='time'){lvl=0;timeLeft=1200;loadLevel(0)}
-  else if(state==='dead'){loadLevel(lvl)}
-  else if(state==='win'){lvl++;if(lvl>=LEVELS.length)state='end';else loadLevel(lvl)}
+  if(state==='title'){state='menu';fade=1}
+  else if(state==='end'){state='menu';fade=1}
+  else if(state==='time'||state==='dead'){loadLevel(lvl)}
+  else if(state==='win'){openStory(lvl+1)}
+  else if(state==='story'){advanceStory()}
+  else if(state==='menu'){openStory(sel)}
 }
+function openStory(i){story={i:i,page:0,t:0};state='story';fade=1}
+function advanceStory(){
+  const pages=STORY[story.i],pg=pages[story.page];
+  const total=pg.l.reduce((a,b)=>a+b.length,0);
+  if(story.t*40<total){story.t=999;return}
+  story.page++;story.t=0;
+  if(story.page>=pages.length){
+    if(story.i>=LEVELS.length){state='end';fade=1}
+    else{lvl=story.i;loadLevel(story.i)}
+  }
+}
+function markDone(){DONE[lvl]=1;try{localStorage.setItem('dp_done',JSON.stringify(DONE))}catch(e){}}
+try{DONE=JSON.parse(localStorage.getItem('dp_done')||'{}')||{}}catch(e){DONE={}}
 
 /* ---------- particles ---------- */
 function dust(x,y,n,col){for(let i=0;i<n;i++)parts.push({x:x+(Math.random()-.5)*10,y:y,vx:(Math.random()-.5)*60,vy:-Math.random()*30,life:.5,max:.5,s:2+Math.random()*3,col:col||'200,180,140',g:-20,k:'dust'})}
@@ -211,10 +250,13 @@ function updPlayer(dt){
     pressed.up=false;return}
   p.blk=(keys.blk&&p.ground&&p.atk<=0)?1:0;
   let ax=0;if(keys.left)ax-=1;if(keys.right)ax+=1;
-  const sp=(p.blk||p.atk>0)?35:150;
-  if(p.hurt<.4){p.vx+=((ax*sp)-p.vx)*Math.min(1,(p.ground?14:5)*dt);if(ax&&!p.blk&&p.atk<=0)p.dir=ax}
-  if(pressed.up&&p.ground&&!p.blk&&p.hurt<.4){p.vy=-520;p.ground=false;dust(p.x+9,p.y+p.h,4);snd(380,.12,'triangle')}
-  pressed.up=false;
+  const sp=(p.blk||p.atk>0)?35:(p.ground?160:205);
+  if(p.hurt<.4){p.vx+=((ax*sp)-p.vx)*Math.min(1,(p.ground?14:8)*dt);if(ax&&!p.blk&&p.atk<=0)p.dir=ax}
+  if(pressed.up)p.jbuf=.14;pressed.up=false;
+  p.jbuf=Math.max(0,(p.jbuf||0)-dt);p.coy=p.ground?.1:Math.max(0,(p.coy||0)-dt);
+  if(p.jbuf>0&&p.coy>0&&!p.blk&&p.hurt<.4){p.vy=-630;p.ground=false;p.coy=0;p.jbuf=0;p.jumped=true;dust(p.x+9,p.y+p.h,4);snd(380,.12,'triangle')}
+  if(p.jumped&&!keys.up&&p.vy<-260){p.vy*=.5;p.jumped=false}
+  if(p.vy>=0)p.jumped=false;
   if(pressed.atk&&p.atk<=0&&p.ground&&!p.blk){p.atk=.35;p.atkHit=false;snd(300,.08,'sawtooth')}
   pressed.atk=false;
   if(p.atk>0){p.atk-=dt;
@@ -226,9 +268,9 @@ function updPlayer(dt){
           else{g.hp--;g.hurt=.3;g.vx=p.dir*170;g.atk=0;shake=3;snd(220,.15,'sawtooth');if(g.hp<=0){g.dead=true}}}}}}
   p.vy=Math.min(p.vy+1800*dt,900);
   moveX(p,p.vx*dt);
-  const was=!p.ground;p.ground=false;moveY(p,p.vy*dt);
+  const vy0=p.vy,was=!p.ground;p.ground=false;moveY(p,p.vy*dt);
   if(p.ground){
-    if(was){const d=p.y-p.peak;if(d>20)dust(p.x+9,p.y+p.h,Math.min(10,4+(d/16|0)));if(d>TS*7)die('נפלת מגובה רב מדי');else if(d>TS*3.6){hurtPlayer(1,0);snd(100,.2,'square')}}
+    if(was){const d=p.y-p.peak;if(d>20)dust(p.x+9,p.y+p.h,Math.min(10,4+(d/16|0)));if(vy0>=895)die('נפלת מגובה רב מדי');else if(vy0>840){hurtPlayer(1,0);snd(100,.2,'square')}}
     else if(Math.abs(p.vx)>100&&Math.random()<.18)dust(p.x+9-p.dir*6,p.y+p.h,1);
     p.peak=p.y;
     const ty=Math.floor((p.y+p.h+2)/TS);
@@ -241,7 +283,7 @@ function updPlayer(dt){
   const cx=Math.floor((p.x+p.w/2)/TS),cy=Math.floor((p.y+p.h/2)/TS),fy=Math.floor((p.y+p.h-1)/TS);
   if(G[fy]&&G[fy][cx]==='P'&&!gateOpen){gateOpen=true;shake=4;snd(150,.5,'triangle',.07)}
   if(G[cy]&&G[cy][cx]==='H'){G[cy][cx]='.';if(p.hp>=p.maxhp&&p.maxhp<5)p.maxhp++;p.hp=Math.min(p.maxhp,p.hp+1);sparks(cx*TS+16,cy*TS+16,12);snd(800,.2,'triangle')}
-  if(G[cy]&&G[cy][cx]==='E'){state='win';snd(900,.4,'triangle');if(lvl>=LEVELS.length-1)msg='ברחת מהארמון!'}
+  if(G[cy]&&G[cy][cx]==='E'){state='win';markDone();snd(900,.4,'triangle');if(lvl>=LEVELS.length-1)msg='ברחת מהארמון!'}
   for(let ty=Math.floor((p.y+p.h/2)/TS);ty<=fy;ty++)for(let tx=Math.floor((p.x+3)/TS);tx<=Math.floor((p.x+p.w-4)/TS);tx++){
     if(G[ty]&&G[ty][tx]==='^'&&p.y+p.h>ty*TS+TS*.5)die('הנסיך נפל על קוצים')}
 }
@@ -267,7 +309,7 @@ function updGuard(g,dt){
 }
 
 function update(dt){
-  tAnim+=dt;gateA+=((gateOpen?1:0)-gateA)*Math.min(1,5*dt);fade=Math.max(0,fade-dt*1.6);shake=Math.max(0,shake-dt*20);
+  tAnim+=dt;if(state==='story'&&story)story.t+=dt;gateA+=((gateOpen?1:0)-gateA)*Math.min(1,5*dt);fade=Math.max(0,fade-dt*1.6);shake=Math.max(0,shake-dt*20);
   if(state==='play'){
     timeLeft-=dt;if(timeLeft<=0){timeLeft=0;state='time'}
     updPlayer(dt);guards.forEach(g=>updGuard(g,dt));
@@ -479,8 +521,8 @@ function drawTile(c,x,y){
 /* ---------- screen drawing ---------- */
 function drawBG(){
   if(ART){
-    const h=Math.round(VH*1.3),w=Math.round(h*BGI.width/BGI.height),px=cam.x*.3;
-    const oy=-Math.round((h-VH)*.35+Math.min(cam.y*.15,(h-VH)*.5));
+    const T=(CUR&&CUR.th)||{zoom:1.3,by:.35,bgx:0},h=Math.round(VH*T.zoom),w=Math.round(h*BGI.width/BGI.height),px=cam.x*.3+T.bgx;
+    const oy=-Math.round((h-VH)*T.by+Math.min(cam.y*.15,(h-VH)*(1-T.by)));
     for(let i=-1;i<=2;i++){const n=Math.floor(px/w)+i,dx=n*w-px;if(dx>VW||dx+w<0)continue;
       ctx.save();if(n&1){ctx.translate(dx+w,0);ctx.scale(-1,1);ctx.drawImage(BGI,0,oy,w,h)}else ctx.drawImage(BGI,dx,oy,w,h);ctx.restore()}
     return}
@@ -491,7 +533,7 @@ let lc=null,lx=null;
 function drawLight(){
   if(!lc){lc=document.createElement('canvas');lc.width=VW*SC;lc.height=VH*SC;lx=lc.getContext('2d')}
   lx.setTransform(1,0,0,1,0,0);lx.globalCompositeOperation='source-over';lx.clearRect(0,0,lc.width,lc.height);
-  lx.fillStyle='rgba(8,4,10,'+(ART?.5:.66)+')';lx.fillRect(0,0,lc.width,lc.height);
+  lx.fillStyle='rgba(8,4,10,'+(ART?((CUR&&CUR.th&&CUR.th.dark)||.5):.66)+')';lx.fillRect(0,0,lc.width,lc.height);
   lx.globalCompositeOperation='destination-out';lx.setTransform(SC,0,0,SC,0,0);
   const add=(x,y,r,a)=>{const g=lx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'rgba(0,0,0,'+a+')');g.addColorStop(.55,'rgba(0,0,0,'+a*.55+')');g.addColorStop(1,'rgba(0,0,0,0)');lx.fillStyle=g;lx.fillRect(x-r,y-r,r*2,r*2)};
   for(const l of lights){const sx=l.x-cam.x,sy=l.y-cam.y;if(sx<-200||sx>VW+200||sy<-200||sy>VH+200)continue;add(sx,sy,l.r+(l.t==='torch'?Math.sin(tAnim*11+l.x)*6:0),l.a)}
@@ -528,6 +570,8 @@ function overlay(title,sub,col){ctx.fillStyle='rgba(6,3,2,.72)';ctx.fillRect(0,0
 function draw(){
   ctx.setTransform(SC,0,0,SC,0,0);ctx.globalAlpha=1;
   if(state==='title'){drawTitle();return}
+  if(state==='menu'){drawMenu();return}
+  if(state==='story'){drawStory();return}
   drawBG();
   ctx.save();
   const sx=shake?(Math.random()-.5)*shake:0,sy=shake?(Math.random()-.5)*shake:0;
@@ -540,7 +584,9 @@ function draw(){
   drawFig(P,PR,P.atk>0||P.blk>0,tAnim);
   for(const q of parts){const k=Math.max(0,q.life/q.max);ctx.fillStyle='rgba('+q.col+','+(q.k==='dust'?k*.5:k)+')';ctx.beginPath();ctx.arc(q.x,q.y,q.s*(q.k==='dust'?(1.6-k*.6):1),0,7);ctx.fill()}
   ctx.restore();
+  if(ART&&CUR&&CUR.th){ctx.save();ctx.globalCompositeOperation='multiply';ctx.fillStyle=CUR.th.tint;ctx.fillRect(0,0,VW,VH);ctx.restore()}
   drawLight();
+  drawIcons();
   // HUD
   ctx.fillStyle='rgba(10,5,3,.55)';ctx.beginPath();ctx.roundRect(8,8,P.maxhp*20+10,22,6);ctx.fill();
   for(let i=0;i<P.maxhp;i++)heart(22+i*20,19,i<P.hp,'#ef3b3b','#3a1616');
@@ -555,19 +601,182 @@ function draw(){
   if(state==='end')overlay('ניצחת!','נשאר לך '+fmt(timeLeft)+'   Enter למשחק חדש','#ffd36b');
 }
 
+/* ---------- story ---------- */
+const STORY=[
+ [{t:'הלילה שבו השמש כמעט לא זרחה',w:'p',l:['הווזיר שרקאן גנב את חותם השמש מארמון הסולטאן','והשליך את הנסיך כאמל לבור הכלא שבחצר.','עד השקיעה ישלים הווזיר טקס עתיק,','ומאותו רגע יישאר המדבר חשוך לתמיד.']},
+  {t:'פרק 1: החצר',w:'p',l:['כאמל מצא סדק בקיר הבור ויצא אל החצר.','הפעמון עוד לא צלצל והשומרים עוד לא יודעים.','אם יגיע אל השער הפנימי בזמן, יש לו סיכוי.']}],
+ [{t:'פרק 2: מרתפי האבן',w:'p',l:['מאחורי השער הפנימי נפתחים מרתפי האבן.','בין הכדים מצא כאמל את חרבו של אביו הסולטאן,','ועליה פתק קצר: הכפתורים פותחים את השערים.']}],
+ [{t:'פרק 3: גגות הארמון',w:'p',l:['מעל לעיר הדולקת ראה כאמל את השמש יורדת.','עוד מעט, וכל המדבר יישאר בחושך.','הוא רץ מגג לגג, ורק הרוח ליוותה אותו.']}],
+ [{t:'פרק 4: הגן המלכותי',w:'p',l:['בגן פגש כאמל את ג\'מאל, הגנן הזקן של הארמון.','ג\'מאל נתן לו שיקוי ולחש: המפתח לחותם מוחבא בספרייה.','והזהיר: האבנים ליד הבריכה לא יחזיקו אותך.']}],
+ [{t:'פרק 5: בור המים',w:'g',l:['הדרך לספרייה עוברת במאגר המים התת קרקעי.','הרצפה רטובה והאבנים נסדקות מתחת לרגליים.','מרחוק נשמעו צעדי השומרים.']}],
+ [{t:'פרק 6: הספרייה הישנה',w:'p',l:['בין אלפי הספרים מצא כאמל מפה ישנה.','על המפה סומן מגדל השעון, שם יתקיים הטקס.','אבל המפתח של החותם עדיין לא נמצא.']}],
+ [{t:'פרק 7: מנהרות העכברושים',w:'g',l:['השומרים גילו שהנסיך בורח ויצאו לרדוף אחריו.','כאמל נכנס למנהרות הצרות שמתחת לארמון.','החושך כאן עמוק, והקוצים לא מחכים לאף אחד.']}],
+ [{t:'פרק 8: חדר האוצרות',w:'g',l:['בקצה המנהרה נפתח חדר ענק מלא זהב.','כאמל התעלם מהזהב ולקח רק את המפתח מהכן.','אבל מי שנוגע במפתח מפעיל את כל המלכודות.']}],
+ [{t:'פרק 9: מגדל השעון',w:'p',l:['המפתח פתח את הדלת למגדל השעון.','הקירות כאן גבוהים והמדרגות שבורות.','כאמל נאחז בכל בליטה והמשיך לטפס.']}],
+ [{t:'פרק 10: חדר הכס',w:'g',l:['בחדר הכס ישב הסולטאן, אביו של כאמל, חסר הכרה.','סביבו עמדו כל חיילי המשמר של הווזיר.','כאמל לחש לו: אני חוזר מיד.']}],
+ [{t:'פרק 11: גשר השמש',w:'p',l:['הגשר הישן מוביל אל ראש המגדל.','השמש כבר נוגעת באופק והאבנים מתפוררות.','אין דרך חזרה. מי שעוצר, נשאר בחושך.']}],
+ [{t:'פרק 12: ראש המגדל',w:'g',l:['בראש המגדל עמד שרקאן והחותם בידו.','הוא צחק: איחרת, נסיך. עוד רגע והשמש שלי.','כאמל שלף את חרב אביו ופסע קדימה.']}],
+ [{t:'אחרי השקיעה',w:'p',l:['החותם נשבר, והשמש נשארה בשמיים.','הסולטאן התעורר, ושרקאן נעלם בין סדקי המגדל.','כאמל חזר לחצר, שם חיכה לו ג\'מאל עם כוס תה.','הלילה הסתיים, ויום חדש התחיל בארמון.']}]
+];
+
+/* ---------- music (generated live, no files) ---------- */
+const MUS={on:true,run:false,bus:null,fx:null,next:0,step:0,bar:0,cfgKey:'',cfg:null,motifs:[],fight:0,drone:null};
+try{if(localStorage.getItem('dp_mus')==='0')MUS.on=false}catch(e){}
+const SCALE=[0,1,4,5,7,8,10,12,13,16,17,19,20,22];
+const CALM={root:50,bpm:70,seed:21,calm:true};
+function hz(m){return 440*Math.pow(2,(m-69)/12)}
+function genPhrase(r){const ph=[];let d=3+Math.floor(r()*3);for(let i=0;i<8;i++){if(r()<(i%2?.5:.15)){ph.push(-1);continue}d=Math.max(0,Math.min(SCALE.length-1,d+Math.floor(r()*5)-2));ph.push(d)}return ph}
+function musicStart(){
+  if(MUS.run)return;
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();
+    MUS.bus=AC.createGain();MUS.bus.gain.value=0;
+    const comp=AC.createDynamicsCompressor();MUS.bus.connect(comp);comp.connect(AC.destination);
+    MUS.fx=AC.createGain();MUS.fx.connect(MUS.bus);
+    const dl=AC.createDelay(1),fb=AC.createGain(),wet=AC.createGain();dl.delayTime.value=.28;fb.gain.value=.34;wet.gain.value=.4;
+    MUS.fx.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(wet);wet.connect(MUS.bus);
+    const d1=AC.createOscillator(),d2=AC.createOscillator(),dg=AC.createGain();d1.type='sine';d2.type='sine';dg.gain.value=.05;
+    d1.connect(dg);d2.connect(dg);dg.connect(MUS.bus);d1.start();d2.start();MUS.drone=[d1,d2];
+    MUS.next=AC.currentTime+.1;MUS.run=true;
+    setInterval(musicSched,60);
+  }catch(e){MUS.run=false}
+}
+function musicToggle(){MUS.on=!MUS.on;try{localStorage.setItem('dp_mus',MUS.on?'1':'0')}catch(e){}musicStart()}
+function musicSetCfg(c){
+  const key=c.root+'_'+c.bpm+'_'+c.seed+'_'+(c.calm?1:0);if(key===MUS.cfgKey)return;
+  MUS.cfgKey=key;MUS.cfg=c;const r=rng(c.seed*977+13);MUS.motifs=[genPhrase(r),genPhrase(r)];MUS.step=0;MUS.bar=0;
+  if(MUS.drone&&AC){MUS.drone[0].frequency.setTargetAtTime(hz(c.root-24),AC.currentTime,.3);MUS.drone[1].frequency.setTargetAtTime(hz(c.root-17),AC.currentTime,.3)}
+}
+function noiseBuf(){if(!MUS.nb){const n=AC.sampleRate*.3|0,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;MUS.nb=b}return MUS.nb}
+function pluck(t,m,dur,vol){
+  const o=AC.createOscillator(),o2=AC.createOscillator(),g=AC.createGain(),f=AC.createBiquadFilter(),h=hz(m);
+  o.type='sawtooth';o2.type='triangle';o.frequency.value=h;o2.frequency.value=h*1.004;
+  f.type='lowpass';f.frequency.setValueAtTime(2600,t);f.frequency.exponentialRampToValueAtTime(420,t+dur);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(f);o2.connect(f);f.connect(g);g.connect(MUS.fx);o.start(t);o2.start(t);o.stop(t+dur+.05);o2.stop(t+dur+.05)}
+function dum(t,vol){const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(52,t+.12);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+.22);o.connect(g);g.connect(MUS.bus);o.start(t);o.stop(t+.25)}
+function tek(t,vol,hi){const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=noiseBuf();f.type='bandpass';f.frequency.value=hi?5400:2700;f.Q.value=1.3;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+.06);s.connect(f);f.connect(g);g.connect(MUS.bus);s.start(t);s.stop(t+.08)}
+function musicStep(t){
+  const c=MUS.cfg;if(!c)return;const st=MUS.step%8,bar=MUS.bar,mot=MUS.motifs[(bar%4===2)?1:0];let d=mot[st];
+  if(d>=0){if(bar%4===3&&st>=5)d=Math.max(0,d-2);pluck(t,c.root+12+SCALE[d],c.calm?.7:.3,c.calm?.075:.095)}
+  if(st===0)pluck(t,c.root-12,1,.11);
+  if(st===4)pluck(t,c.root-5,.6,.07);
+  if(!c.calm){
+    if(st===0||st===4)dum(t,.4);
+    if(st===1||st===3||st===6)tek(t,.13,false);
+    if(MUS.fight>.5){tek(t,.08,true);if(st===2||st===5)dum(t,.28)}
+  }
+}
+function musicSched(){
+  if(!AC||!MUS.cfg||!MUS.on)return;
+  const spb=60/(MUS.cfg.bpm*(MUS.fight>.5?1.1:1))/2;
+  while(MUS.next<AC.currentTime+.3){
+    if(MUS.next<AC.currentTime)MUS.next=AC.currentTime+.05;
+    musicStep(MUS.next);MUS.next+=spb;MUS.step++;if(MUS.step%8===0)MUS.bar++}
+}
+function musicTick(){
+  if(!MUS.run)return;
+  try{
+    const calm=state==='title'||state==='menu'||state==='story'||state==='end',quiet=state==='dead'||state==='time';
+    let near=0;if(state==='play'&&P)near=guards.some(g=>!g.dead&&Math.abs(g.x-P.x)<260&&Math.abs(g.y-P.y)<60)?1:0;
+    MUS.fight+=(near-MUS.fight)*.05;
+    musicSetCfg(calm||!CUR||!CUR.mus?CALM:CUR.mus);
+    const tgt=MUS.on?(quiet?.08:(calm?.32:.55)):0;
+    MUS.bus.gain.value+=(tgt-MUS.bus.gain.value)*.08;
+  }catch(e){}
+}
+
+/* ---------- menu, story screens, icons ---------- */
+function ptr(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*VW,(e.clientY-r.top)/r.height*VH]}
+const CARD={w:136,h:70,gx:14,gy:10,cols:4};
+function cardPos(i){const row=Math.floor(i/CARD.cols),col=i%CARD.cols,x0=(VW-(CARD.cols*CARD.w+(CARD.cols-1)*CARD.gx))/2;return[x0+(CARD.cols-1-col)*(CARD.w+CARD.gx),76+row*(CARD.h+CARD.gy)]}
+function menuHit(x,y){for(let i=0;i<LEVELS.length;i++){const[cx,cy]=cardPos(i);if(x>=cx&&x<=cx+CARD.w&&y>=cy&&y<=cy+CARD.h)return i}return -1}
+function drawMenu(){
+  cam.x=(tAnim*14)%768;cam.y=0;CUR=LEVELS[sel];drawBG();
+  ctx.fillStyle='rgba(8,4,3,.55)';ctx.fillRect(0,0,VW,VH);
+  txt('בחירת מפלס',VW/2,50,32,gold(50,32),'900','center',5);
+  for(let i=0;i<LEVELS.length;i++){
+    const[x,y]=cardPos(i),on=i===sel;
+    ctx.save();
+    if(on){ctx.shadowColor='#ffc857';ctx.shadowBlur=14}
+    panel(x,y,CARD.w,CARD.h);ctx.restore();
+    if(on){ctx.strokeStyle='#ffd36b';ctx.lineWidth=2.4;ctx.beginPath();ctx.roundRect(x,y,CARD.w,CARD.h,7);ctx.stroke()}
+    txt(String(i+1),x+CARD.w-14,y+34,28,on?'#ffd36b':'#e8c27a','900','right',3);
+    txt(LEVELS[i].short,x+CARD.w/2,y+58,12.5,'#f3e3c0','600','center',2.5);
+    if(DONE[i])txt('✓',x+16,y+28,22,'#7dff9a','900','center',3);
+  }
+  txt('חצים לבחירה     Enter להתחלה     M מוזיקה     Esc חזרה',VW/2,VH-12,13,'#d8c7a0','500','center',3);
+  drawMusicBtn(VW-34,10);
+}
+function drawMusicBtn(x,y){ctx.fillStyle='rgba(10,5,3,.6)';ctx.beginPath();ctx.roundRect(x,y,24,22,6);ctx.fill();ctx.strokeStyle='#d9a84a99';ctx.lineWidth=1;ctx.stroke();txt(MUS.on?'♪':'×',x+12,y+17,15,'#ffd36b','700','center',0)}
+function drawIcons(){
+  if(state!=='play')return;
+  drawMusicBtn(10,36);
+  ctx.fillStyle='rgba(10,5,3,.6)';ctx.beginPath();ctx.roundRect(40,36,24,22,6);ctx.fill();ctx.strokeStyle='#d9a84a99';ctx.lineWidth=1;ctx.stroke();txt('☰',52,52,14,'#ffd36b','700','center',0)
+}
+function drawStory(){
+  cam.x=(tAnim*9)%768;cam.y=0;CUR=LEVELS[Math.min(story.i,LEVELS.length-1)];drawBG();
+  ctx.fillStyle='rgba(6,3,2,.6)';ctx.fillRect(0,0,VW,VH);
+  const v=ctx.createRadialGradient(VW/2,VH/2,VH*.3,VW/2,VH/2,VW*.7);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.72)');ctx.fillStyle=v;ctx.fillRect(0,0,VW,VH);
+  const pg=STORY[story.i][story.page];
+  if(ART){
+    ctx.save();ctx.translate(92,322);ctx.scale(2.7,2.7);spr('p_idle',0,0,false,0,1,1+Math.sin(tAnim*2)*.012);ctx.restore();
+    if(pg.w==='g'){ctx.save();ctx.translate(VW-92,322);ctx.scale(2.7,2.7);spr('g_idle',0,0,false,0,1,1+Math.sin(tAnim*2+1)*.012);ctx.restore()}
+  }
+  panel(150,58,VW-300,214);
+  {let fs=26;ctx.font='900 '+fs+'px '+FONT;while(ctx.measureText(pg.t).width>VW-340&&fs>16){fs--;ctx.font='900 '+fs+'px '+FONT}txt(pg.t,VW/2,104,fs,gold(104,fs),'900','center',5)}
+  let n=Math.floor(story.t*40);
+  for(let i=0;i<pg.l.length;i++){
+    const ln=pg.l[i],part=ln.slice(0,Math.max(0,n));n-=ln.length;
+    if(part)txt(part,VW-170,150+i*30,16.5,'#f3e3c0','500','right',3)
+  }
+  const a=.55+.45*Math.sin(tAnim*3.2);ctx.globalAlpha=a;txt('לחץ Enter או גע במסך להמשך',VW/2,338,16,'#fff','700','center',4);ctx.globalAlpha=1;
+  drawMusicBtn(VW-34,10);
+}
+function touchNav(k){
+  musicStart();
+  if(state==='menu'){
+    const n=LEVELS.length;
+    if(k==='left')sel=(sel+1)%n;else if(k==='right')sel=(sel+n-1)%n;else if(k==='up')sel=(sel+n-4)%n;else if(k==='down')sel=(sel+4)%n;else openStory(sel);
+  }else startOrRestart();
+}
+function menuKey(e){
+  musicStart();
+  const k=e.key;
+  if(k==='m'||k==='M'){musicToggle();return true}
+  if(k==='Escape'){
+    if(state==='menu'){state='title';fade=1;return true}
+    if(state!=='title'){state='menu';fade=1;return true}
+    return false}
+  if(state==='menu'){
+    const n=LEVELS.length;
+    if(k==='ArrowLeft'||k==='a'||k==='A')sel=(sel+1)%n;
+    else if(k==='ArrowRight'||k==='d'||k==='D')sel=(sel+n-1)%n;
+    else if(k==='ArrowUp'||k==='w'||k==='W')sel=(sel+n-4)%n;
+    else if(k==='ArrowDown'||k==='s'||k==='S')sel=(sel+4)%n;
+    else if(k==='Enter'||k===' ')openStory(sel);
+    else return false;
+    e.preventDefault();return true}
+  return false}
+
 /* ---------- input ---------- */
 const KM={ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',ArrowUp:'up',w:'up',' ':'up',ArrowDown:'down',s:'down',z:'atk',j:'atk',x:'blk',k:'blk'};
 addEventListener('keydown',e=>{
   const k=KM[e.key.length>1?e.key:e.key.toLowerCase()];
+  if(menuKey(e))return;
   if(e.key==='Enter'&&state!=='play')startOrRestart();
   if((e.key==='r'||e.key==='R')&&(state==='play'||state==='dead'))loadLevel(lvl);
   if(k){if(!keys[k])pressed[k]=true;keys[k]=true;e.preventDefault();if(state==='title')startOrRestart()}
 });
 addEventListener('keyup',e=>{const k=KM[e.key.length>1?e.key:e.key.toLowerCase()];if(k)keys[k]=false});
-cv.addEventListener('pointerdown',()=>{if(state!=='play')startOrRestart()});
+cv.addEventListener('pointerdown',e=>{
+  musicStart();const[x,y]=ptr(e);
+  if(state==='play'){if(y>34&&y<60){if(x>8&&x<36)musicToggle();else if(x>38&&x<66){state='menu';fade=1}}return}
+  if(state==='menu'){if(x>VW-36&&y<34){musicToggle();return}const i=menuHit(x,y);if(i>=0){sel=i;openStory(i)}return}
+  startOrRestart()});
 document.querySelectorAll('.b').forEach(b=>{
   const k=b.dataset.k;
-  b.addEventListener('pointerdown',e=>{e.preventDefault();if(state!=='play'){startOrRestart();return}if(!keys[k])pressed[k]=true;keys[k]=true;b.classList.add('on')});
+  b.addEventListener('pointerdown',e=>{e.preventDefault();if(state!=='play'){touchNav(k);return}if(!keys[k])pressed[k]=true;keys[k]=true;b.classList.add('on')});
   const up=()=>{keys[k]=false;b.classList.remove('on')};
   b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('pointerleave',up);
 });
@@ -580,7 +789,7 @@ let last=performance.now();
 function frame(now){
   const dt=Math.min(1/30,(now-last)/1000);last=now;
   if(!ART&&!artFail){ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#0a0605';ctx.fillRect(0,0,cv.width,cv.height);requestAnimationFrame(frame);return}
-  update(dt);draw();requestAnimationFrame(frame);
+  musicTick();update(dt);draw();requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 </script>
